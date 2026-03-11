@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee System | DQL Analysis Dashboard</title>
+    <style>
+        /* ==========================================================================
+           1. CSS VARIABLES & BASE THEME SETUP
+           ========================================================================== */
+        :root {
+            /* Color Palette: Dark IDE Theme */
+            --bg-main: #0a0e17;
+            --bg-panel: #111827;
+            --bg-card: #1f2937;
+            --bg-header: #111827;
+            --border-color: #374151;
+            
+            /* Text Colors */
+            --text-primary: #e5e7eb;
+            --text-secondary: #9ca3af;
+            --text-title: #f9fafb;
+            
+            /* SQL Syntax Highlighting Colors */
+            --syn-keyword: #f472b6;    /* Pink for SELECT, FROM, JOIN */
+            --syn-func: #60a5fa;       /* Blue for COUNT, SUM, MAX */
+            --syn-table: #34d399;      /* Light Green for Table Names */
+            --syn-string: #fcd34d;     /* Yellow for Strings */
+            --syn-number: #c084fc;     /* Purple for Numbers */
+            --syn-comment: #6b7280;    /* Grey for Comments */
+
+            /* UI Accents */
+            --accent-primary: #3b82f6;
+            --accent-success: #10b981;
+            --accent-hover: #2563eb;
+            --accent-warn: #f59e0b;
+
+            /* Typography */
+            --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            --font-code: "JetBrains Mono", Consolas, "Courier New", monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-ui);
+            background-color: var(--bg-main);
+            color: var(--text-primary);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            font-size: 15px;
+            line-height: 1.6;
+        }
+
+        /* Custom Scrollbars for a polished look */
+        ::-webkit-scrollbar { width: 10px; height: 10px; }
+        ::-webkit-scrollbar-track { background: var(--bg-main); }
+        ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 5px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
+
+        /* ==========================================================================
+           2. SIDEBAR NAVIGATION
+           ========================================================================== */
+        .sidebar {
+            width: 320px;
+            background-color: var(--bg-panel);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            z-index: 50;
+        }
+
+        .brand-header {
+            padding: 25px 20px;
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--text-title);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            position: sticky;
+            top: 0;
+            background-color: var(--bg-panel);
+        }
+
+        .brand-icon {
+            background-color: var(--accent-primary);
+            color: #ffffff;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 900;
+        }
+
+        .nav-category {
+            padding: 20px 0 10px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .nav-title {
+            padding: 0 20px 10px 20px;
+            font-size: 12px;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            font-weight: 700;
+            letter-spacing: 1.2px;
+        }
+
+        .nav-link {
+            padding: 12px 20px 12px 30px;
+            cursor: pointer;
+            display: block;
+            color: var(--text-primary);
+            transition: all 0.2s ease-in-out;
+            border-left: 4px solid transparent;
+            font-size: 14px;
+            text-decoration: none;
+        }
+
+        .nav-link:hover {
+            background-color: rgba(59, 130, 246, 0.05);
+            color: var(--text-title);
+        }
+
+        .nav-link.active {
+            background-color: rgba(59, 130, 246, 0.1);
+            border-left-color: var(--accent-primary);
+            color: var(--accent-primary);
+            font-weight: 600;
+        }
+
+        /* ==========================================================================
+           3. MAIN CONTENT LAYOUT
+           ========================================================================== */
+        .main-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            scroll-behavior: smooth;
+        }
+
+        .top-bar {
+            height: 75px;
+            background-color: var(--bg-header);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 40px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+
+        .top-bar-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-title);
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--accent-success);
+            background: rgba(16, 185, 129, 0.1);
+            padding: 6px 12px;
+            border-radius: 20px;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--accent-success);
+            border-radius: 50%;
+            box-shadow: 0 0 8px var(--accent-success);
+        }
+
+        /* Content Sections */
+        .content-section {
+            display: none;
+            padding: 40px;
+            max-width: 1000px;
+            margin: 0 auto;
+            width: 100%;
+            animation: slideUpFade 0.4s ease-out forwards;
+        }
+
+        .content-section.active {
+            display: block;
+        }
+
+        @keyframes slideUpFade {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ==========================================================================
+           4. TYPOGRAPHY & INSTRUCTION COMPONENTS
+           ========================================================================== */
+        h1 { font-size: 28px; margin-bottom: 15px; color: var(--text-title); letter-spacing: -0.5px; }
+        h2 { font-size: 20px; margin: 40px 0 15px; color: var(--accent-primary); padding-bottom: 10px; border-bottom: 1px solid var(--border-color); }
+        p { margin-bottom: 20px; color: var(--text-secondary); font-size: 15px; }
+        
+        .objective-card {
+            background-color: rgba(59, 130, 246, 0.05);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-left: 4px solid var(--accent-primary);
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+
+        .objective-title {
+            font-weight: 700;
+            color: var(--accent-primary);
+            margin-bottom: 10px;
+            display: block;
+            font-size: 16px;
+        }
+
+        /* ==========================================================================
+           5. CODE EDITOR COMPONENT
+           ========================================================================== */
+        .editor-wrapper {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 25px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+
+        .editor-header {
+            background-color: var(--bg-panel);
+            padding: 12px 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .editor-tab {
+            font-family: var(--font-code);
+            font-size: 13px;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-run {
+            background: var(--accent-success);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+        }
+
+        .btn-run:hover {
+            background: #059669;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 15px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-run:disabled {
+            background: var(--border-color);
+            color: var(--text-secondary);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .editor-body {
+            display: flex;
+            background-color: #0d1117; /* Darker interior for code */
+            padding: 20px 0;
+            overflow-x: auto;
+        }
+
+        .editor-lines {
+            min-width: 50px;
+            padding-right: 15px;
+            text-align: right;
+            color: #4b5563;
+            font-family: var(--font-code);
+            font-size: 14px;
+            user-select: none;
+            border-right: 1px solid var(--border-color);
+            margin-right: 15px;
+        }
+
+        .editor-code {
+            flex: 1;
+            font-family: var(--font-code);
+            font-size: 14px;
+            white-space: pre;
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        /* SYNTAX HIGHLIGHTING CLASSES */
+        .kw { color: var(--syn-keyword); font-weight: bold; }
+        .fn { color: var(--syn-func); font-weight: bold; }
+        .tbl { color: var(--syn-table); }
+        .str { color: var(--syn-string); }
+        .num { color: var(--syn-number); }
+        .com { color: var(--syn-comment); font-style: italic; }
+
+        /* ==========================================================================
+           6. EXECUTION RESULTS (DATA TABLES)
+           ========================================================================== */
+        .results-wrapper {
+            display: none; /* Hidden until execution */
+            background-color: var(--bg-card);
+            border: 1px solid var(--accent-success);
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 50px;
+            animation: slideUpFade 0.5s ease-out;
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.1);
+        }
+        
+        .results-header {
+            background-color: rgba(16, 185, 129, 0.1);
+            border-bottom: 1px solid var(--accent-success);
+            padding: 12px 20px;
+            font-size: 13px;
+            font-weight: bold;
+            color: var(--accent-success);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        
+        .data-table th {
+            background-color: rgba(0,0,0,0.2);
+            color: var(--text-title);
+            font-weight: 600;
+            text-align: left;
+            padding: 12px 20px;
+            border-bottom: 1px solid var(--border-color);
+            font-family: var(--font-code);
+            font-size: 12px;
+        }
+        
+        .data-table td {
+            padding: 12px 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            color: var(--text-primary);
+        }
+        
+        .data-table tr:last-child td { border-bottom: none; }
+        .data-table tr:nth-child(even) td { background-color: rgba(255,255,255,0.02); }
+        .data-table tr:hover td { background-color: rgba(59, 130, 246, 0.05); }
+
+        .loader {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 2px solid #fff;
+            border-bottom-color: transparent;
+            border-radius: 50%;
+            display: none;
+            animation: rotation 1s linear infinite;
+        }
+        @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="brand-header">
+            <div class="brand-icon">SQL</div>
+            <div>DQL Analytics</div>
+        </div>
+
+        <div class="nav-category">
+            <div class="nav-title">System Context</div>
+            <a class="nav-link active" onclick="switchView('intro', this)">Project Objectives</a>
+            <a class="nav-link" onclick="switchView('schema', this)">Schema Reference</a>
+        </div>
+
+        <div class="nav-category">
+            <div class="nav-title">Execution Engine (DQL)</div>
+            <a class="nav-link" onclick="switchView('q1', this)">1. Multiple Projects</a>
+            <a class="nav-link" onclick="switchView('q2', this)">2. Department Projects</a>
+            <a class="nav-link" onclick="switchView('q3', this)">3. Website Redesign Roles</a>
+            <a class="nav-link" onclick="switchView('q4', this)">4. Largest Department</a>
+            <a class="nav-link" onclick="switchView('q5', this)">5. High Earners (>60k)</a>
+            <a class="nav-link" onclick="switchView('q6', this)">6. Headcount per Project</a>
+            <a class="nav-link" onclick="switchView('q7', this)">7. Cross-Project Roles</a>
+            <a class="nav-link" onclick="switchView('q8', this)">8. Department Expenses</a>
+        </div>
+    </div>
+
+    <div class="main-container" id="main-scroll">
+        
+        <div class="top-bar">
+            <div class="top-bar-title" id="top-title">Project Objectives</div>
+            <div class="status-badge">
+                <div class="status-dot"></div>
+                Engine Online
+            </div>
+        </div>
+
+        <div id="view-intro" class="content-section active">
+            <h1>What You're Aiming For</h1>
+            
+            <div class="objective-card">
+                <span class="objective-title">Primary Objective</span>
+                <p style="margin-bottom: 0;">
+                    The objective of this checkpoint is to practice SQL Data Query Language (DQL) by writing queries to retrieve and analyze data from the previously created <strong>employee participation information system</strong> database. These queries will help you gain insights into employee, department, and project relationships, and summarize data for decision-making purposes.
+                </p>
+            </div>
+
+            <h2>Instructions Overview</h2>
+            <p>You will execute 8 specific Data Query Language (SELECT) statements to extract business intelligence from the database. This includes tracking multi-project assignments, financial expenditures, team distributions, and individual role allocations.</p>
+            
+            <p>Navigate through the sidebar to view the SQL logic, syntax, and simulated execution results for each of the 8 assigned queries.</p>
+        </div>
+
+        <div id="view-schema" class="content-section">
+            <h1>Database Schema Reference</h1>
+            <p>A quick reminder of the logical structure established in previous checkpoints. The DQL queries will rely heavily on mapping the Primary Keys (PK) to Foreign Keys (FK) across these 4 tables.</p>
+            
+            <table class="data-table" style="border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; margin-bottom: 30px;">
+                <tr><th>Table Name</th><th>Attributes & Data Types</th></tr>
+                <tr>
+                    <td style="color: var(--syn-table); font-weight: bold;">Department</td>
+                    <td>Num_S (PK), Label, Manager_Name</td>
+                </tr>
+                <tr>
+                    <td style="color: var(--syn-table); font-weight: bold;">Employee</td>
+                    <td>Num_E (PK), Name, Position, Salary, Department_Num_S (FK)</td>
+                </tr>
+                <tr>
+                    <td style="color: var(--syn-table); font-weight: bold;">Project</td>
+                    <td>Num_P (PK), Title, Start_Date, End_Date, Department_Num_S (FK)</td>
+                </tr>
+                <tr>
+                    <td style="color: var(--syn-table); font-weight: bold;">Employee_Project</td>
+                    <td>Employee_Num_E (FK), Project_Num_P (FK), Role</td>
+                </tr>
+            </table>
+        </div>
+
+        <div id="view-q1" class="content-section">
+            <h2>Query 1: Employees on Multiple Projects</h2>
+            <p><strong>Instruction:</strong> Write a query to retrieve the names of employees who are assigned to more than one project, including the total number of projects for each employee.</p>
+            <p><strong>Logic:</strong> We JOIN the <code>Employee</code> table to the associative <code>Employee_Project</code> table. We then <code>GROUP BY</code> the employee and use the <code>HAVING</code> clause to filter the aggregated <code>COUNT</code> to strictly greater than 1.</p>
+            
+            <div class="editor-wrapper">
+                <div class="editor-header">
+                    <div class="editor-tab">📄 01_multi_projects.sql</div>
+                    <button class="btn-run" onclick="executeSQL('q1', this)">
+                        <span class="loader" id="load-q1"></span> ▶ Run Query
+                    </button>
+                </div>
+                <div class="editor-body">
+                    <div class="editor-lines" id="lines-q1"></div>
+                    <div class="editor-code">
+<span class="kw">SELECT</span> E.Name, <span class="fn">COUNT</span>(EP.Project_Num_P) <span class="kw">AS</span> Total_Projects
+<span class="kw">FROM</span> <span class="tbl">Employee</span> E
+<span class="kw">JOIN</span> <span class="tbl">Employee_Project</span> EP <span class="kw">ON</span> E.Num_E = EP.Employee_Num_E
+<span class="kw">GROUP BY</span> E.Num_E, E.Name
+<span class="kw">HAVING</span> <span class="fn">COUNT</span>(EP.Project_Num_P) > <span class="num">1</span>;</div>
+                </div>
+            </div>
+            
+            <div class="results-wrapper" id="res-q1">
+                <div class="results-header"><span>Execution Result</span><span>1 row retrieved (0.012s)</span></div>
+                <table class="data-table">
+                    <tr><th>Name</th><th>Total_Projects</th></tr>
+                    <tr><td>John Doe</td><td>2</td></tr>
+                </table>
+            </div>
+        </div>
+
+        <div id="view-q2" class="content-section">
+            <h2>Query 2: Projects by Department</h2>
+            <p><strong>Instruction:</strong> Write a query to retrieve the list of projects managed by each department, including the department label and manager’s name.</p>
+            <p><strong>Logic:</strong> Since projects are directly assigned to departments via the <code>Department_Num_S</code> foreign key, this only requires a standard <code>INNER JOIN</code> between the two parent/child tables.</p>
+            
+            <div class="editor-wrapper">
+                <div class="editor-header">
+                    <div class="editor-tab">📄 02_dept_projects.sql</div>
+                    <button class="btn-run" onclick="executeSQL('q2', this)">
+                        <span class="loader" id="load-q2"></span> ▶ Run Query
+                    </button>
+                </div>
+                <div class="editor-body">
+                    <div class="editor-lines" id="lines-q2"></div>
+                    <div class="editor-code">
+<span class="kw">SELECT</span> D.Label <span class="kw">AS</span> Department_Name, D.Manager_Name, P.Title <span class="kw">AS</span> Project_Title
+<span class="kw">FROM</span> <span class="tbl">Department</span> D
+<span class="kw">JOIN</span> <span class="tbl">Project</span> P <span class="kw">ON</span> D.Num_S = P.Department_Num_S;</div>
+                </div>
+            </div>
+            
+            <div class="results-wrapper" id="res-q2">
+                <div class="results-header"><span>Execution Result</span><span>4 rows retrieved (0.009s)</span></div>
+                <table class="data-table">
+                    <tr><th>Department_Name</th><th>Manager_Name</th><th>Project_Title</th></tr>
+                    <tr><td>IT</td><td>Alice Johnson</td><td>Website Redesign</td></tr>
+                    <tr><td>HR</td><td>Bob Smith</td><td>Employee Onboarding</td></tr>
+                    <tr><td>Marketing</td><td>Clara Bennett</td><td>Market Research</td></tr>
+                    <tr><td>IT</td><td>Alice Johnson</td><td>IT Infrastructure Setup</td></tr>
+                </table>
+            </div>
+        </div>
+
+        <div id="view-q3" class="content-section">
+            <h2>Query 3: "Website Redesign" Team</h2>
+            <p><strong>Instruction:</strong> Write a query to retrieve the names of employees working on the project "Website Redesign," including their roles in the project.</p>
+            <p><strong>Logic:</strong> This requires chaining two joins to traverse the Many-to-Many relationship. We start at Employee, pass through the Employee_Project bridging table to get the Role, and end at Project to filter by the specific string title.</p>
+            
+            <div class="editor-wrapper">
+                <div class="editor-header">
+                    <div class="editor-tab">📄 03_project_team.sql</div>
+                    <button class="btn-run" onclick="executeSQL('q3', this)">
+                        <span class="loader" id="load-q3"></span> ▶ Run Query
+                    </button>
+                </div>
+                <div class="editor-body">
+                    <div class="editor-lines" id="lines-q3"></div>
+                    <div class="editor-code">
+<span class="kw">SELECT</span> E.Name, EP.Role
+<span class="kw">FROM</span> <span class="tbl">Employee</span> E
+<span class="kw">JOIN</span> <span class="tbl">Employee_Project</span> EP <span class="kw">ON</span> E.Num_E = EP.Employee_Num_E
+<span class="kw">JOIN</span> <span class="tbl">Project</span> P <span class="kw">ON</span> EP.Project_Num_P = P.Num_P
+<span class="kw">WHERE</span> P.Title = <span class="str">'Website Redesign'</span>;</div>
+                </div>
+            </div>
+            
+            <div class="results-wrapper" id="res-q3">
+                <div class="results-header"><span>Execution Result</span><span>2 rows retrieved (0.015s)</span></div>
+                <table class="data-table">
+                    <tr><th>Name</th><th>Role</th></tr>
+                    <tr><td>John Doe</td><td>Frontend Developer</td></tr>
+                    <tr><td>Sarah Johnson</td><td>Backend Developer</td></tr>
+                </table>
+            </div>
+        </div>
+
+        <div id="view-q4" class="content-section">
+            <h2>Query 4: Largest Department</h2>
+            <p><strong>Instruction:</strong> Write a query to retrieve the department with the highest number of employees, including the department label, manager name, and the total number of employees.</p>
+            <p><strong>Logic:</strong> We join Departments and Employees, group by the Department details, calculate the total count, order the results in descending order (highest first), and limit the output to the single top row.</p>
+            
+            <div class="editor-wrapper">
+                <div class="editor-header">
+                    <div class="editor-tab">📄 04_largest_dept.sql</div>
+                    <button class="btn-run" onclick="executeSQL('q4', this)">
+                        <span class="loader" id="load-q4"></span> ▶ Run Query
+                    </button>
+                </div>
+                <div class="editor-body">
+                    <div class="editor-lines" id="lines-q4"></div>
+                    <div class="editor-code">
+<span class="com">-- Note: LIMIT 1 is used in MySQL/PostgreSQL. For SQL Server, use SELECT TOP 1.</span>
+<span class="kw">SELECT</span> D.Label, D.Manager_Name, <span class="fn">COUNT</span>(E.Num_E) <span class="kw">AS</span> Total_Employees
+<span class="kw">FROM</span> <span class="tbl">Department</span> D
+<span class="kw">JOIN</span> <span class="tbl">Employee</span> E <span class="kw">ON</span> D.Num_S = E.Department_Num_S
+<span class="kw">GROUP BY</span> D.Num_S, D.Label, D.Manager_Name
+<span class="kw">ORDER BY</span> Total_Employees <span class="kw">DESC</span>
+<span class="kw">LIMIT</span> <span class="num">1</span>;</div>
+                </div>
+            </div>
+            
+            <div class="results-wrapper" id="res-q4">
+                <div class="results-header"><span>Execution Result</span><span>1 row retrieved (0.018s)</span></div>
+                <table class="data-table">
+                    <tr><th>Label</th><th>Manager_Name</th><th>Total_Employees</th></tr>
+                    <tr><td>IT</td><td>Alice Johnson</td><td>2</td></tr>
+                </table>
+            </div>
+        </div>
+
+        <div id="view-q5" class="content-section">
+            <h2>Query 5: High Earning Employees</h2>
+            <p><strong>Instruction:</strong> Write a query to retrieve the names and positions of employees earning a salary greater than 60,000, including their department names.</p>
+            <p><strong>Logic:</strong> A straightforward join to pull the department name, combined with a <code>WHERE</code> clause acting as a numerical threshold filter on the salary column. Notice it is strictly greater than (>), not greater than or equal to.</p>
+            
+            <div class="editor-wrapper">
+                <div class="editor-header">
+                    <div class="editor-tab">📄 05_high_earners.sql</div>
+                    <button class="btn-run" onclick="executeSQL('q5', this)">
+                        <span class="loader" id="load-q5"></span> ▶ Run Query
+                    </button>
+                </div>
+                <div class="editor-body">
+                    <div class="editor-lines" id="lines-q5"></div>
+                    <div class="editor-code">
+<span class="kw">SELECT</span> E.Name, E.Position, E.Salary, D.Label <span class="kw">AS</span> Department_Name
+<span class="kw">FROM</span> <span class="tbl">Employee</span> E
+<span class="kw">JOIN</span> <span class="tbl">Department</span> D <span class="kw">ON</span> E.Department_Num_S = D.Num_S
+<span class="kw">WHERE</span> E.Salary > <span class="num">60000.00</span>;</div>
+                </div>
+            </div>
+            
+            <div class="results-wrapper" id="res-q5">
+                <div class="results-header"><span>Execution Result</span><span>1 row retrieved (0.007s)</span></div>
+                <table class="data-table">
+                    <tr><th>Name</th><th>Position</th><th>Salary</th><th>Department_Name</th></tr>
+                    <tr><td>Sarah Johnson</td><td>Data Scientist</td><td>70000.00</td><td>IT</td></tr>
+                </table>
+            </div>
+        </div>
+
+        <div id="view-q6" class="content-section">
+            <h2>Query 6: Headcount per Project</h2>
+            <p><strong>Instruction:</strong> Write a query to retrieve the number of employees assigned to each project, including the project title.</p>
+            <p><strong>Logic:</strong> We group by the Project data. Best practice dictates using a <code>LEFT JOIN</code> from Project to Employee_Project, ensuring that if a project has zero employees assigned, it still appears in the final report with a count of 0.</p>
+            
+            <div class="editor-wrapper">
+                <div class="editor-header">
+                    <div class="editor-tab">📄 06_project_headcounts.sql</div>
+                    <button class="btn-run" onclick="executeSQL('q6', this)">
+                        <span class="loader" id="load-q6"></span> ▶ Run Query
+                    </button>
+                </div>
+                <div class="editor-body">
+                    <div class="editor-lines" id="lines-q6"></div>
+                    <div class="editor-code">
+<span class="kw">SELECT</span> P.Title, <span class="fn">COUNT</span>(EP.Employee_Num_E) <span class="kw">AS</span> Employee_Count
+<span class="kw">FROM</span> <span class="tbl">Project</span> P
+<span class="kw">LEFT JOIN</span> <span class="tbl">Employee_Project</span> EP <span class="kw">ON</span> P.Num_P = EP.Project_Num_P
+<span class="kw">GROUP BY</span> P.Num_P, P.Title;</div>
+                </div>
+            </div>
+            
+            <div class="results-wrapper" id="res-q6">
+                <div class="results-header"><span>Execution Result</span><span>4 rows retrieved (0.014s)</span></div>
+                <table class="data-table">
+                    <tr><th>Title</th><th>Employee_Count</th></tr>
+                    <tr><td>Website Redesign</td><td>2</td></tr>
+                    <tr><td>Employee Onboarding</td><td>2</td></tr>
+                    <tr><td>Market Research</td><td>1</td></tr>
+                    <tr><td>IT Infrastructure Setup</td><td>1</td></tr>
+                </table>
+            </div>
+        </div>
+
+        <div id="view-q7" class="content-section">
+            <h2>Query 7: Master Role Summary</h2>
+            <p><strong>Instruction:</strong> Write a query to retrieve a summary of roles employees have across different projects, including the employee name, project title, and role.</p>
+            <p><strong>Logic:</strong> Similar to Query 3, this requires chaining joins across the M:N relationship. We add an <code>ORDER BY</code> to present the report cleanly, sorting alphabetically by project, and then alphabetically by employee name within that project.</p>
+            
+            <div class="editor-wrapper">
+                <div class="editor-header">
+                    <div class="editor-tab">📄 07_role_summary.sql</div>
+                    <button class="btn-run" onclick="executeSQL('q7', this)">
+                        <span class="loader" id="load-q7"></span> ▶ Run Query
+                    </button>
+                </div>
+                <div class="editor-body">
+                    <div class="editor-lines" id="lines-q7"></div>
+                    <div class="editor-code">
+<span class="kw">SELECT</span> E.Name <span class="kw">AS</span> Employee_Name, P.Title <span class="kw">AS</span> Project_Title, EP.Role
+<span class="kw">FROM</span> <span class="tbl">Employee</span> E
+<span class="kw">JOIN</span> <span class="tbl">Employee_Project</span> EP <span class="kw">ON</span> E.Num_E = EP.Employee_Num_E
+<span class="kw">JOIN</span> <span class="tbl">Project</span> P <span class="kw">ON</span> EP.Project_Num_P = P.Num_P
+<span class="kw">ORDER BY</span> P.Title, E.Name;</div>
+                </div>
+            </div>
+            
+            <div class="results-wrapper" id="res-q7">
+                <div class="results-header"><span>Execution Result</span><span>6 rows retrieved (0.022s)</span></div>
+                <table class="data-table">
+                    <tr><th>Employee_Name</th><th>Project_Title</th><th>Role</th></tr>
+                    <tr><td>Emma Wilson</td><td>Employee Onboarding</td><td>Coordinator</td></tr>
+                    <tr><td>Jane Smith</td><td>Employee Onboarding</td><td>Trainer</td></tr>
+                    <tr><td>John Doe</td><td>IT Infrastructure Setup</td><td>Network Specialist</td></tr>
+                    <tr><td>Mike Brown</td><td>Market Research</td><td>Research Lead</td></tr>
+                    <tr><td>John Doe</td><td>Website Redesign</td><td>Frontend Developer</td></tr>
+                    <tr><td>Sarah Johnson</td><td>Website Redesign</td><td>Backend Developer</td></tr>
+                </table>
+            </div>
+        </div>
+
+        <div id="view-q8" class="content-section">
+            <h2>Query 8: Financial Expenditure</h2>
+            <p><strong>Instruction:</strong> Write a query to retrieve the total salary expenditure for each department, including the department label and manager name.</p>
+            <p><strong>Logic:</strong> We group by the department hierarchy and use the aggregate math function <code>SUM()</code> on the salary column of the joined employee table to calculate the total departmental overhead.</p>
+            
+            <div class="editor-wrapper">
+                <div class="editor-header">
+                    <div class="editor-tab">📄 08_dept_expenditure.sql</div>
+                    <button class="btn-run" onclick="executeSQL('q8', this)">
+                        <span class="loader" id="load-q8"></span> ▶ Run Query
+                    </button>
+                </div>
+                <div class="editor-body">
+                    <div class="editor-lines" id="lines-q8"></div>
+                    <div class="editor-code">
+<span class="kw">SELECT</span> D.Label, D.Manager_Name, <span class="fn">SUM</span>(E.Salary) <span class="kw">AS</span> Total_Salary_Expense
+<span class="kw">FROM</span> <span class="tbl">Department</span> D
+<span class="kw">JOIN</span> <span class="tbl">Employee</span> E <span class="kw">ON</span> D.Num_S = E.Department_Num_S
+<span class="kw">GROUP BY</span> D.Num_S, D.Label, D.Manager_Name;</div>
+                </div>
+            </div>
+            
+            <div class="results-wrapper" id="res-q8">
+                <div class="results-header"><span>Execution Result</span><span>3 rows retrieved (0.016s)</span></div>
+                <table class="data-table">
+                    <tr><th>Label</th><th>Manager_Name</th><th>Total_Salary_Expense</th></tr>
+                    <tr><td>IT</td><td>Alice Johnson</td><td>130000.00</td></tr>
+                    <tr><td>HR</td><td>Bob Smith</td><td>107000.00</td></tr>
+                    <tr><td>Marketing</td><td>Clara Bennett</td><td>50000.00</td></tr>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // 1. Line Number Generation dynamically based on line breaks
+        function generateLines(containerId, count) {
+            const el = document.getElementById(containerId);
+            if(!el) return;
+            let html = '';
+            for(let i=1; i<=count; i++) html += `<div>${i}</div>`;
+            el.innerHTML = html;
+        }
+
+        window.onload = () => {
+            generateLines('lines-q1', 5);
+            generateLines('lines-q2', 3);
+            generateLines('lines-q3', 5);
+            generateLines('lines-q4', 6);
+            generateLines('lines-q5', 4);
+            generateLines('lines-q6', 4);
+            generateLines('lines-q7', 5);
+            generateLines('lines-q8', 4);
+        };
+
+        // 2. Navigation / Tab Switching Logic
+        function switchView(viewId, element) {
+            // Manage Active Nav State
+            document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
+            element.classList.add('active');
+
+            // Manage Active View Section
+            document.querySelectorAll('.content-section').forEach(section => section.classList.remove('active'));
+            document.getElementById('view-' + viewId).classList.add('active');
+
+            // Update Header Title based on Nav selection
+            document.getElementById('top-title').innerText = element.innerText.replace(/[0-9]+\.\s/, ''); // Remove numbers
+
+            // Scroll to top
+            document.getElementById('main-scroll').scrollTop = 0;
+        }
+
+        // 3. Execution Simulation Logic
+        function executeSQL(queryId, btnElement) {
+            const resultWrapper = document.getElementById('res-' + queryId);
+            const loader = document.getElementById('load-' + queryId);
+            
+            // Set Button to Loading State
+            btnElement.style.backgroundColor = 'var(--accent-warn)';
+            btnElement.disabled = true;
+            loader.style.display = 'inline-block';
+            btnElement.childNodes[2].nodeValue = " Executing..."; // Update text node
+            
+            // Hide result if already shown
+            resultWrapper.style.display = 'none';
+
+            // Simulate Network / DB Latency (600ms)
+            setTimeout(() => {
+                // Restore Button State
+                btnElement.style.backgroundColor = 'var(--accent-success)';
+                btnElement.disabled = false;
+                loader.style.display = 'none';
+                btnElement.childNodes[2].nodeValue = " ▶ Run Again";
+                
+                // Show Results Table
+                resultWrapper.style.display = 'block';
+            }, 600);
+        }
+    </script>
+</body>
+</html>
